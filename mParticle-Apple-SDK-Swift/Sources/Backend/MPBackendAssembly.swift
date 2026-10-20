@@ -4,12 +4,13 @@ import UIKit
 /// What the backend's collaborators call back on the controller that owns them. Each call goes
 /// through the Objective-C runtime, so an Objective-C test's partial mock of the controller sees it.
 /// The optional requirements are the ones the controller's Objective-C boundary category implements,
-/// because they handle Objective-C types; the class's own implementation does not provide them.
+/// because they handle Objective-C types or, for the upload builder context, a persistence block that may
+/// return nil; the class's own implementation does not provide them.
 @objc(MPBackendAssemblyOwner)
 public protocol MPBackendAssemblyOwner: NSObjectProtocol {
     @objc(persistence) func persistence() -> MPBackendPersistence?
     @objc(messageBuilderContext) func messageBuilderContext() -> MPMessageBuilderContext
-    @objc(uploadBuilderContext) func uploadBuilderContext() -> MPUploadBuilderContext
+    @objc(uploadBuilderContext) optional func uploadBuilderContext() -> MPUploadBuilderContext
     /// Waits for kits, then uploads.
     @objc(uploadFromBackendWithCompletionHandler:) func upload(completionHandler: (() -> Void)?)
     @objc(requestConfigFromBackend) func requestConfig()
@@ -129,7 +130,7 @@ public final class MPBackendAssembly: NSObject {
         let uploads = MPBackendUploadCoordinator(
             persistence: { [weak owner] in owner?.persistence() },
             stateMachine: { host.stateMachine() },
-            makeContext: { [weak owner] in owner?.uploadBuilderContext() },
+            makeContext: { [weak owner] in owner?.uploadBuilderContext?() },
             makeBuilder: { [weak owner] group, messages, settings, context in
                 guard owner != nil else { return nil }
                 let builder = MPUploadBuilderPRIVATE(
